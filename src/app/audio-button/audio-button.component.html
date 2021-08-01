@@ -1,1 +1,1 @@
-<button (click)="click()" ></button>
+<button (click)="click()" [ngClass]="{'playing' : toggle, 'stopped': !toggle}"></button>
