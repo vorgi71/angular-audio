@@ -1,5 +1,7 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { EventEmitter } from '@angular/core';
+import { Component, Input, OnInit, Output } from '@angular/core';
 import { AudioService } from '../audio.service';
+import { SampleStateEvent } from '../SampleStateEvent';
 
 @Component({
   selector: 'audio-button',
@@ -14,17 +16,23 @@ export class AudioButtonComponent implements OnInit {
 
   }
 
-  @Input() sampleUrl?: string;
+  private readonly fadeOutTime=200;
 
-  private audioData?:AudioBuffer;
+  @Input() row?: number;
+  @Input() col?: number;
+  @Input() sampleUrl?: string;
+  @Output() sampleState: EventEmitter<any> = new EventEmitter();
+
+  private gainNode?: GainNode;
+  private audioData?: AudioBuffer;
   private audioBuffer?: AudioBufferSourceNode;
-  toggle: boolean = true;
+  samplePlaying: boolean = true;
 
   ngOnInit(): void {
     if (this.sampleUrl) {
       this.audio.loadSample(this.sampleUrl).subscribe(
         (res) => {
-          this.audioData=res;
+          this.audioData = res;
         },
         (error) => console.error(error)
       );
@@ -32,20 +40,47 @@ export class AudioButtonComponent implements OnInit {
   }
 
   click(): void {
-    if (this.toggle) {
-      this.audioBuffer=this.audio.audio.createBufferSource();
-      if(this.audioData) {
-        this.audioBuffer.buffer = this.audioData;
-        this.audioBuffer.loop = true;
-        this.audioBuffer.connect(this.audio.audio.destination);
-        this.audioBuffer?.start();
-      }
-
+    if (this.samplePlaying) {
+      this.audioBuffer = this.startSample();
     } else {
-      this.audioBuffer?.disconnect();
-      this.audioBuffer?.stop();
+      this.stopSample(this.audioBuffer);
     }
-    this.toggle = !this.toggle;
+    this.samplePlaying = !this.samplePlaying;
   }
 
+  private stopSample(audioBuffer: AudioBufferSourceNode | undefined) {
+    this.fireSampleState();
+    this.gainNode?.gain.linearRampToValueAtTime(0, this.audio.audio.currentTime + this.fadeOutTime/1000.0);
+    
+    let audioBufferToKill=this.audioBuffer;
+    setTimeout(() => {
+      audioBufferToKill?.disconnect();
+      audioBufferToKill?.stop();
+    },this.fadeOutTime);
+  }
+
+  private startSample(): AudioBufferSourceNode {
+    
+    let nextBeat=this.audio.getNextBeat();
+    console.log(nextBeat);
+
+    let newAudioBuffer = this.audio.audio.createBufferSource();
+    this.fireSampleState();
+    if (this.audioData) {
+      newAudioBuffer.buffer = this.audioData;
+      newAudioBuffer.loop = true;
+      if (!this.gainNode) {
+        this.gainNode = this.audio.audio.createGain();
+        this.gainNode.connect(this.audio.audio.destination);
+      }
+      this.gainNode.gain.value=1.0;
+      newAudioBuffer.connect(this.gainNode);
+      newAudioBuffer.start(this.audio.getNextBeat());
+    }
+    return newAudioBuffer;
+  }
+
+  fireSampleState() {
+    this.sampleState.emit(new SampleStateEvent(this.row || 0, this.col || 0, this.samplePlaying))
+  }
 }

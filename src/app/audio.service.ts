@@ -10,6 +10,8 @@ export class AudioService {
 
   audio: AudioContext;
 
+  bpm: number = 125;
+
   constructor(
     private http: HttpClient
   ) {
@@ -41,6 +43,12 @@ export class AudioService {
         return this.audio.decodeAudioData(data);
       })
     );
+  }
 
+  getNextBeat() {
+    let currentTime=this.audio.currentTime;
+    let secPerBeat=60/this.bpm;
+    let rest=currentTime%secPerBeat;
+    return currentTime+(secPerBeat-rest);
   }
 }
