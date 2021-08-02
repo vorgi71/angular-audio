@@ -62,7 +62,6 @@ export class AudioButtonComponent implements OnInit {
   private startSample(): AudioBufferSourceNode {
     
     let nextBeat=this.audio.getNextBeat();
-    console.log(nextBeat);
 
     let newAudioBuffer = this.audio.audio.createBufferSource();
     this.fireSampleState();

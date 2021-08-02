@@ -10,7 +10,7 @@ export class AudioService {
 
   audio: AudioContext;
 
-  bpm: number = 125;
+  bpm: number = 132;
 
   constructor(
     private http: HttpClient
